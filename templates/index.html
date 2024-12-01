@@ -402,6 +402,41 @@
         .content-section {
             transition: all 0.3s ease;
         }
+
+        .person-label {
+            border-radius: 8px;
+            color: white;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .person-label .collapse {
+            background: white;
+            color: #333;
+            padding: 1rem;
+        }
+        .edit-person-btn {
+            padding: 0.25rem 0.5rem;
+            color: white !important;
+        }
+        .edit-person-btn:hover {
+            opacity: 0.8;
+        }
+        .person-label .form-control {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+        .person-label .color-option {
+            width: 25px;
+            height: 25px;
+        }
+        .person-label .custom-color-btn {
+            width: 25px;
+            height: 25px;
+        }
+        .person-label .custom-color-input {
+            width: 25px;
+            height: 25px;
+        }
     </style>
 </head>
 <body>
@@ -520,12 +555,16 @@
         const ctx = canvas.getContext('2d');
         let selectedColor = null;
         let selectedGender = 'male';
+        let hoveredLabel = -1;
         const people = [];
+        let deleteButtonAreas = [];
+        let isDrawing = false;
 
         // Draw height measurement lines and labels
         function drawHeightScales() {
-            const maxHeight = 339;
+            const maxHeight = 339;  // Set to 339 cm
             const heightPx = canvas.height;
+            // Generate heights array from 339 down to 0 in steps of 17
             const heights = [];
             for (let h = 339; h >= 0; h -= 17) {
                 heights.push(h);
@@ -536,12 +575,6 @@
 
             // Clear canvas first
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Clear the right scale first
-            const rightScale = document.getElementById('heightScaleFt');
-            if(rightScale) {
-                rightScale.innerHTML = '';
-            }
 
             // Draw grid lines for each specific height
             heights.forEach(h => {
@@ -555,7 +588,7 @@
                 ctx.lineTo(canvas.width, position);
                 ctx.stroke();
 
-                // Add cm label directly on canvas (left side)
+                // Add cm label directly on canvas
                 ctx.fillStyle = '#000000';
                 ctx.font = 'bold 12px Arial';
                 ctx.textAlign = 'left';
@@ -572,11 +605,6 @@
             });
         }
 
-        // Store click areas for delete buttons
-        let deleteButtonAreas = [];
-        let hoveredLabel = -1;
-        let isDrawing = false;
-
         // Create an overlay canvas for delete buttons
         const overlayCanvas = document.createElement('canvas');
         overlayCanvas.style.position = 'absolute';
@@ -585,16 +613,111 @@
         overlayCanvas.style.pointerEvents = 'none';
         document.querySelector('.canvas-container').appendChild(overlayCanvas);
         const overlayCtx = overlayCanvas.getContext('2d');
+        overlayCanvas.width = canvas.width;
+        overlayCanvas.height = canvas.height;
 
-        // Function to check if point is within a label area
-        function isPointInLabel(x, y) {
-            return window.labelAreas.findIndex(area => 
-                x >= area.x && x <= area.x + area.width &&
-                y >= area.y && y <= area.y + area.height
-            );
+        // Add Person button click handler
+        const addPersonBtn = document.getElementById('addPerson');
+        addPersonBtn.addEventListener('click', () => {
+            const name = document.getElementById('name').value;
+            const feet = parseInt(document.getElementById('feet').value) || 0;
+            const inches = parseInt(document.getElementById('inches').value) || 0;
+            
+            const heightInCm = (feet * 30.48) + (inches * 2.54);
+            
+            if (heightInCm > 0) {
+                // Get color from either color picker or selected option or random
+                let personColor;
+                const activeColorOption = document.querySelector('.color-option.active');
+                
+                if (selectedColor) {
+                    personColor = selectedColor;  // Use color picker value if available
+                } else if (activeColorOption) {
+                    personColor = activeColorOption.style.backgroundColor;  // Use selected color option
+                } else {
+                    personColor = getRandomColor();  // Use random color if no color is selected
+                }
+
+                const person = {
+                    name: name || 'Person ' + (people.length + 1),
+                    height: heightInCm,
+                    color: personColor,
+                    gender: selectedGender
+                };
+
+                people.push(person);
+                
+                // Clear inputs and selections
+                document.getElementById('name').value = '';
+                document.getElementById('feet').value = '';
+                document.getElementById('inches').value = '';
+                selectedColor = null;
+                
+                // Remove active class from color options
+                document.querySelectorAll('.color-option').forEach(opt => {
+                    opt.classList.remove('active');
+                });
+                
+                // Reset gender selection to male
+                document.querySelectorAll('.gender-btn').forEach((btn, index) => {
+                    if (index === 0) {
+                        btn.classList.add('active');
+                        selectedGender = 'male';
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+
+                drawPeople();
+            }
+        });
+
+        // Add color selection handlers
+        const colorOptions = document.querySelectorAll('#addPersonContent .color-option');
+        colorOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                colorOptions.forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+                selectedColor = option.style.backgroundColor;
+            });
+        });
+
+        // Add color picker handler
+        const customColorBtn = document.getElementById('customColorBtn');
+        const colorPicker = document.getElementById('colorPicker');
+
+        customColorBtn.addEventListener('click', () => {
+            colorPicker.click();
+        });
+
+        colorPicker.addEventListener('input', (e) => {
+            selectedColor = e.target.value;
+            colorOptions.forEach(opt => opt.classList.remove('active'));
+        });
+
+        // Add gender selection handlers
+        const genderButtons = document.querySelectorAll('#addPersonContent .gender-btn');
+        genderButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                genderButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedGender = btn.getAttribute('data-gender');
+            });
+        });
+
+        // Helper function for random color
+        function getRandomColor() {
+            const colors = [
+                '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD',
+                '#D4A5A5', '#9B59B6', '#3498DB', '#E74C3C', '#1ABC9C',
+                '#F1C40F', '#2ECC71', '#E67E22', '#9B59B6', '#34495E',
+                '#16A085', '#27AE60', '#2980B9', '#8E44AD', '#F39C12'
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
         }
 
-        function resizeCanvases() {
+        // Initialize canvas size
+        function resizeCanvas() {
             const container = document.querySelector('.canvas-container');
             canvas.width = container.offsetWidth - 20;
             canvas.height = container.offsetHeight;
@@ -605,108 +728,209 @@
         }
 
         // Update resize event listener
-        window.addEventListener('resize', resizeCanvases);
+        window.addEventListener('resize', resizeCanvas);
 
         // Initialize immediately
-        resizeCanvases();
+        resizeCanvas();
 
-        function drawDeleteButton(labelX, labelY, index) {
-            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+        // Add Clear All functionality
+        document.getElementById('clearAll').addEventListener('click', () => {
+            // Clear the people array
+            people.length = 0;
             
-            const buttonSize = 24;
-            const spacing = 10;
-            const totalWidth = buttonSize * 2 + spacing;
-            
-            // Calculate positions to center both icons
-            const startX = labelX - totalWidth/2 - 8;
-            const editButtonX = startX;
-            const deleteButtonX = startX + buttonSize + spacing;
-            const buttonY = labelY - 40;
-            
-            // Store button areas
-            deleteButtonAreas = [
-                {
-                    x: editButtonX,
-                    y: buttonY,
-                    width: buttonSize,
-                    height: buttonSize,
-                    index: index,
-                    type: 'edit'
-                },
-                {
-                    x: deleteButtonX,
-                    y: buttonY,
-                    width: buttonSize,
-                    height: buttonSize,
-                    index: index,
-                    type: 'delete'
-                }
-            ];
+            // Redraw the canvas with just the height scales
+            drawHeightScales();
+        });
 
-            // Draw pencil icon
-            overlayCtx.fillStyle = '#000000';
-            overlayCtx.font = 'bold 16px "Font Awesome 5 Free"';
-            overlayCtx.textAlign = 'center';
-            overlayCtx.textBaseline = 'middle';
-            overlayCtx.fillText('\uf044', editButtonX + buttonSize/2, buttonY + buttonSize/2);
+        // Add edit panel HTML to the sidebar
+        const addPersonContent = document.getElementById('addPersonContent');
+        const editPanelHTML = `
+            <div id="editPersonContent" class="content-section d-none">
+                <div class="sidebar">
+                    <h5 class="mb-4">Edit Person:</h5>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <button class="btn btn-primary" id="doneEditing">
+                            <i class="fas fa-check me-2"></i>Done Editing
+                        </button>
+                    </div>
+                    <div id="editPersonList" class="mb-4">
+                        <!-- Character labels will be added here dynamically -->
+                    </div>
+                </div>
+            </div>`;
 
-            // Draw trash icon
-            overlayCtx.fillStyle = '#000000';
-            overlayCtx.font = 'bold 16px "Font Awesome 5 Free"';
-            overlayCtx.textAlign = 'center';
-            overlayCtx.textBaseline = 'middle';
-            overlayCtx.fillText('\uf2ed', deleteButtonX + buttonSize/2, buttonY + buttonSize/2);
+        // Insert edit panel after add person content
+        addPersonContent.insertAdjacentHTML('afterend', editPanelHTML);
+
+        const editPersonContent = document.getElementById('editPersonContent');
+        const editPersonList = document.getElementById('editPersonList');
+        let currentEditingIndex = -1;
+        let editSelectedColor = null;
+
+        function createEditForm(person, index) {
+            const backgroundColor = person.color;
+            const textColor = '#ffffff';
+            
+            return `
+                <div class="edit-form mb-3">
+                    <div class="d-flex gap-2 mb-3">
+                        <button class="gender-btn flex-grow-1 ${person.gender === 'male' ? 'active' : ''}" data-gender="male">
+                            <i class="fas fa-male me-2"></i>Male
+                        </button>
+                        <button class="gender-btn flex-grow-1 ${person.gender === 'female' ? 'active' : ''}" data-gender="female">
+                            <i class="fas fa-female me-2"></i>Female
+                        </button>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control edit-name" value="${person.name}" placeholder="Enter name">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Height</label>
+                        <div class="d-flex gap-2">
+                            <input type="number" class="form-control edit-feet" value="${Math.floor(person.height/30.48)}" placeholder="ft">
+                            <input type="number" class="form-control edit-inches" value="${Math.round((person.height/2.54)%12)}" placeholder="in">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Choose Color</label>
+                        <div class="d-flex gap-2 flex-wrap align-items-center color-picker-container">
+                            <div class="color-options">
+                                <div class="color-option ${person.color === '#4361ee' ? 'active' : ''}" style="background: #4361ee"></div>
+                                <div class="color-option ${person.color === '#3a0ca3' ? 'active' : ''}" style="background: #3a0ca3"></div>
+                                <div class="color-option ${person.color === '#f72585' ? 'active' : ''}" style="background: #f72585"></div>
+                                <div class="color-option ${person.color === '#4cc9f0' ? 'active' : ''}" style="background: #4cc9f0"></div>
+                                <div class="color-option ${person.color === '#7209b7' ? 'active' : ''}" style="background: #7209b7"></div>
+                            </div>
+                            <div class="custom-color-wrapper">
+                                <button class="custom-color-btn">
+                                    <i class="fas fa-pencil-alt"></i>
+                                </button>
+                                <input type="color" class="custom-color-input" value="${person.color}">
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
         }
 
-        // Update click handler to only handle delete
-        canvas.addEventListener('click', (event) => {
-            const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
-            
-            const clickedButton = deleteButtonAreas.find(area => 
-                x >= area.x && x <= area.x + area.width &&
-                y >= area.y && y <= area.y + area.height
-            );
-            
-            if (clickedButton && clickedButton.type === 'delete') {
-                // Only handle delete action
-                people.splice(clickedButton.index, 1);
-                hoveredLabel = -1;
-                overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-                drawPeople();
+        function updateEditPanel() {
+            editPersonList.innerHTML = '';
+            people.forEach((person, index) => {
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'person-label mb-3';
+                labelDiv.style.backgroundColor = person.color;
+                
+                const labelContent = `
+                    <div class="d-flex justify-content-between align-items-center p-3">
+                        <div>
+                            <strong>${person.name}</strong>
+                            <div class="small">${Math.round(person.height)}cm (${Math.floor(person.height/30.48)}'${Math.round((person.height/2.54)%12)}")</div>
+                        </div>
+                        <button class="btn btn-link text-white edit-person-btn" data-index="${index}">
+                            <i class="fas fa-pencil-alt"></i>
+                        </button>
+                    </div>
+                    <div class="collapse" id="editForm${index}">
+                        ${createEditForm(person, index)}
+                    </div>`;
+                
+                labelDiv.innerHTML = labelContent;
+                editPersonList.appendChild(labelDiv);
+
+                // Add event listeners for this label's form
+                const form = labelDiv.querySelector(`#editForm${index}`);
+                const editBtn = labelDiv.querySelector('.edit-person-btn');
+                
+                editBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Close all other forms
+                    document.querySelectorAll('.collapse').forEach(collapse => {
+                        if (collapse.id !== `editForm${index}`) {
+                            collapse.classList.remove('show');
+                        }
+                    });
+                    // Toggle this form
+                    form.classList.toggle('show');
+                });
+
+                // Add event listeners for form elements
+                const formElements = form.querySelectorAll('input, button');
+                formElements.forEach(element => {
+                    element.addEventListener('change', () => {
+                        // Update person object
+                        const nameInput = form.querySelector('.edit-name');
+                        const feetInput = form.querySelector('.edit-feet');
+                        const inchesInput = form.querySelector('.edit-inches');
+                        const activeGenderBtn = form.querySelector('.gender-btn.active');
+                        const activeColorOption = form.querySelector('.color-option.active');
+                        const colorPicker = form.querySelector('.custom-color-input');
+
+                        const heightInCm = (parseInt(feetInput.value) || 0) * 30.48 + 
+                                         (parseInt(inchesInput.value) || 0) * 2.54;
+
+                        people[index] = {
+                            ...person,
+                            name: nameInput.value || `Person ${index + 1}`,
+                            height: heightInCm,
+                            gender: activeGenderBtn ? activeGenderBtn.getAttribute('data-gender') : person.gender,
+                            color: activeColorOption ? activeColorOption.style.backgroundColor : 
+                                   colorPicker.value !== person.color ? colorPicker.value : person.color
+                        };
+
+                        // Update label display
+                        const labelText = labelDiv.querySelector('strong');
+                        const heightText = labelDiv.querySelector('.small');
+                        labelText.textContent = people[index].name;
+                        heightText.textContent = `${Math.round(heightInCm)}cm (${Math.floor(heightInCm/30.48)}'${Math.round((heightInCm/2.54)%12)}")`;
+                    });
+                });
+            });
+        }
+
+        // Add styles for edit panel
+        const style = document.createElement('style');
+        style.textContent = `
+            .person-label {
+                border-radius: 8px;
+                color: white;
+                overflow: hidden;
+                margin-bottom: 10px;
             }
-            // Edit action is ignored for now
-        });
-
-        // Optimize mousemove handler
-        canvas.addEventListener('mousemove', (event) => {
-            const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
-            
-            const labelIndex = isPointInLabel(x, y);
-            if (labelIndex !== hoveredLabel) {
-                hoveredLabel = labelIndex;
-                if (labelIndex !== -1) {
-                    const labelX = window.startX + (labelIndex * (60 + 40)) + 30; // personWidth/2
-                    const labelY = canvas.height - (people[labelIndex].height * canvas.height / 339) - 60;
-                    drawDeleteButton(labelX, labelY, labelIndex);
-                } else {
-                    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-                    deleteButtonAreas = [];
-                }
+            .person-label .collapse {
+                background: white;
+                color: #333;
+                padding: 1rem;
             }
-        });
+            .edit-person-btn {
+                padding: 0.25rem 0.5rem;
+                color: white !important;
+            }
+            .edit-person-btn:hover {
+                opacity: 0.8;
+            }
+            .person-label .form-control {
+                background: #f8f9fa;
+                border: 1px solid #dee2e6;
+            }
+            .person-label .color-option {
+                width: 25px;
+                height: 25px;
+            }
+            .person-label .custom-color-btn {
+                width: 25px;
+                height: 25px;
+            }
+            .person-label .custom-color-input {
+                width: 25px;
+                height: 25px;
+            }
+        `;
+        document.head.appendChild(style);
 
-        // Add mouseout handler
-        canvas.addEventListener('mouseout', () => {
-            hoveredLabel = -1;
-            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-            deleteButtonAreas = [];
-        });
-
-        // Update drawPeople function to not handle delete buttons
+        // Draw people function
         async function drawPeople() {
             // Clear delete button areas
             deleteButtonAreas = [];
@@ -783,199 +1007,62 @@
             }
         }
 
-        // Initialize canvas size
-        function resizeCanvas() {
-            const container = document.querySelector('.canvas-container');
-            canvas.width = container.offsetWidth - 20;
-            canvas.height = container.offsetHeight;
-            drawHeightScales();
-            drawPeople();
+        // Function to check if point is within a label area
+        function isPointInLabel(x, y) {
+            return window.labelAreas.findIndex(area => 
+                x >= area.x && x <= area.x + area.width &&
+                y >= area.y && y <= area.y + area.height
+            );
         }
 
-        // Event listeners
-        window.addEventListener('resize', resizeCanvas);
-        window.addEventListener('load', resizeCanvas);
-
-        // Initialize immediately
-        resizeCanvas();
-
-        // Helper function for random color
-        function getRandomColor() {
-            const colors = [
-                '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD',
-                '#D4A5A5', '#9B59B6', '#3498DB', '#E74C3C', '#1ABC9C',
-                '#F1C40F', '#2ECC71', '#E67E22', '#9B59B6', '#34495E',
-                '#16A085', '#27AE60', '#2980B9', '#8E44AD', '#F39C12'
-            ];
-            return colors[Math.floor(Math.random() * colors.length)];
-        }
-
-        // Add these event listeners and functions
-        document.getElementById('addPerson').addEventListener('click', async () => {
-            const name = document.getElementById('name').value;
-            const feet = parseInt(document.getElementById('feet').value) || 0;
-            const inches = parseInt(document.getElementById('inches').value) || 0;
+        // Draw delete/edit buttons
+        function drawDeleteButton(labelX, labelY, index) {
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
             
-            const heightInCm = (feet * 30.48) + (inches * 2.54);
+            const buttonSize = 24;
+            const spacing = 10;
+            const totalWidth = buttonSize * 2 + spacing;
             
-            if (heightInCm > 0) {
-                // Get color from either color picker or selected option or random
-                let personColor;
-                const activeColorOption = document.querySelector('.color-option.active');
-                
-                if (selectedColor) {
-                    personColor = selectedColor;  // Use color picker value if available
-                } else if (activeColorOption) {
-                    personColor = activeColorOption.style.backgroundColor;  // Use selected color option
-                } else {
-                    personColor = getRandomColor();  // Use random color if no color is selected
+            // Calculate positions to center both icons
+            const startX = labelX - totalWidth/2 - 8;
+            const editButtonX = startX;
+            const deleteButtonX = startX + buttonSize + spacing;
+            const buttonY = labelY - 40;
+            
+            // Store button areas
+            deleteButtonAreas = [
+                {
+                    x: editButtonX,
+                    y: buttonY,
+                    width: buttonSize,
+                    height: buttonSize,
+                    index: index,
+                    type: 'edit'
+                },
+                {
+                    x: deleteButtonX,
+                    y: buttonY,
+                    width: buttonSize,
+                    height: buttonSize,
+                    index: index,
+                    type: 'delete'
                 }
+            ];
 
-                const person = {
-                    name: name || 'Person ' + (people.length + 1),
-                    height: heightInCm,
-                    color: personColor,
-                    gender: selectedGender
-                };
+            // Draw pencil icon
+            overlayCtx.fillStyle = '#000000';
+            overlayCtx.font = 'bold 16px "Font Awesome 5 Free"';
+            overlayCtx.textAlign = 'center';
+            overlayCtx.textBaseline = 'middle';
+            overlayCtx.fillText('\uf044', editButtonX + buttonSize/2, buttonY + buttonSize/2);
 
-                people.push(person);
-                
-                // Clear inputs and selections
-                document.getElementById('name').value = '';
-                document.getElementById('feet').value = '';
-                document.getElementById('inches').value = '';
-                selectedColor = null;
-                
-                // Remove active class from color options
-                document.querySelectorAll('.color-option').forEach(opt => {
-                    opt.classList.remove('active');
-                });
-                
-                // Reset gender selection to male
-                document.querySelectorAll('.gender-btn').forEach((btn, index) => {
-                    if (index === 0) {
-                        btn.classList.add('active');
-                        selectedGender = 'male';
-                    } else {
-                        btn.classList.remove('active');
-                    }
-                });
-
-                await drawPeople();
-            }
-        });
-
-        // Add color selection functionality
-        document.querySelectorAll('.color-option').forEach(option => {
-            option.addEventListener('click', () => {
-                document.querySelectorAll('.color-option').forEach(opt => {
-                    opt.classList.remove('active');
-                });
-                option.classList.add('active');
-                selectedColor = option.style.backgroundColor;
-            });
-        });
-
-        // Add color picker functionality
-        const customColorBtn = document.getElementById('customColorBtn');
-        const colorPicker = document.getElementById('colorPicker');
-
-        customColorBtn.addEventListener('click', () => {
-            colorPicker.click();
-        });
-
-        colorPicker.addEventListener('input', (e) => {
-            const newColor = e.target.value;
-            selectedColor = newColor;
-            
-            // Remove active class from all color options
-            document.querySelectorAll('.color-option').forEach(opt => {
-                opt.classList.remove('active');
-            });
-        });
-
-        // Add gender selection functionality
-        document.querySelectorAll('.gender-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.gender-btn').forEach(b => {
-                    b.classList.remove('active');
-                });
-                btn.classList.add('active');
-                selectedGender = btn.getAttribute('data-gender');
-            });
-        });
-
-        // Add Clear All functionality
-        document.getElementById('clearAll').addEventListener('click', () => {
-            // Clear the people array
-            people.length = 0;
-            
-            // Redraw the canvas with just the height scales
-            drawHeightScales();
-        });
-
-        // Add edit panel HTML to the sidebar
-        const addPersonContent = document.getElementById('addPersonContent');
-        const editPanelHTML = `
-            <div id="editPersonContent" class="content-section d-none">
-                <div class="sidebar">
-                    <h5 class="mb-4">Edit Person</h5>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <button class="btn btn-primary" id="doneEditing">
-                            <i class="fas fa-check me-2"></i>Done Editing
-                        </button>
-                    </div>
-                    <div class="mb-4">
-                        <div class="d-flex gap-2 mb-3">
-                            <button class="gender-btn flex-grow-1" data-gender="male">
-                                <i class="fas fa-male me-2"></i>Male
-                            </button>
-                            <button class="gender-btn flex-grow-1" data-gender="female">
-                                <i class="fas fa-female me-2"></i>Female
-                            </button>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Name</label>
-                            <input type="text" id="editName" class="form-control" placeholder="Enter name">
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Height</label>
-                            <div class="d-flex gap-2">
-                                <input type="number" id="editFeet" class="form-control" placeholder="ft">
-                                <input type="number" id="editInches" class="form-control" placeholder="in">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="form-label">Choose Color</label>
-                        <div class="d-flex gap-2 flex-wrap align-items-center color-picker-container">
-                            <div class="color-options">
-                                <div class="color-option" style="background: #4361ee"></div>
-                                <div class="color-option" style="background: #3a0ca3"></div>
-                                <div class="color-option" style="background: #f72585"></div>
-                                <div class="color-option" style="background: #4cc9f0"></div>
-                                <div class="color-option" style="background: #7209b7"></div>
-                            </div>
-                            <div class="custom-color-wrapper">
-                                <button class="custom-color-btn" id="editCustomColorBtn">
-                                    <i class="fas fa-pencil-alt"></i>
-                                </button>
-                                <input type="color" id="editColorPicker" class="custom-color-input">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>`;
-
-        // Insert edit panel after add person content
-        addPersonContent.insertAdjacentHTML('afterend', editPanelHTML);
-
-        const editPersonContent = document.getElementById('editPersonContent');
-        let currentEditingIndex = -1;
-        let editSelectedColor = null;
+            // Draw trash icon
+            overlayCtx.fillStyle = '#000000';
+            overlayCtx.font = 'bold 16px "Font Awesome 5 Free"';
+            overlayCtx.textAlign = 'center';
+            overlayCtx.textBaseline = 'middle';
+            overlayCtx.fillText('\uf2ed', deleteButtonX + buttonSize/2, buttonY + buttonSize/2);
+        }
 
         // Update click handler to handle edit action
         canvas.addEventListener('click', (event) => {
@@ -995,114 +1082,60 @@
                     hoveredLabel = -1;
                     overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
                     drawPeople();
+                    if (editPersonContent.classList.contains('d-none') === false) {
+                        updateEditPanel();
+                    }
                 } else if (clickedButton.type === 'edit') {
-                    // Handle edit
-                    const person = people[clickedButton.index];
-                    currentEditingIndex = clickedButton.index;
-                    
                     // Switch to edit panel
                     addPersonContent.classList.add('d-none');
                     editPersonContent.classList.remove('d-none');
+                    updateEditPanel();
                     
-                    // Fill the form with person's data
-                    document.getElementById('editName').value = person.name;
-                    const feet = Math.floor(person.height/30.48);
-                    const inches = Math.round((person.height/2.54)%12);
-                    document.getElementById('editFeet').value = feet;
-                    document.getElementById('editInches').value = inches;
-                    
-                    // Set gender
-                    editPersonContent.querySelectorAll('.gender-btn').forEach(btn => {
-                        if (btn.getAttribute('data-gender') === person.gender) {
-                            btn.classList.add('active');
-                        } else {
-                            btn.classList.remove('active');
-                        }
-                    });
-                    
-                    // Set color
-                    editSelectedColor = person.color;
-                    editPersonContent.querySelectorAll('.color-option').forEach(opt => {
-                        opt.classList.remove('active');
-                        if (opt.style.backgroundColor === person.color) {
-                            opt.classList.add('active');
-                        }
-                    });
+                    // Open the clicked person's edit form
+                    const editForm = document.getElementById(`editForm${clickedButton.index}`);
+                    if (editForm) {
+                        editForm.classList.add('show');
+                    }
                 }
             }
         });
 
-        // Add event listeners for edit panel
+        // Add Done Editing button handler
         document.getElementById('doneEditing').addEventListener('click', () => {
-            if (currentEditingIndex !== -1) {
-                const name = document.getElementById('editName').value;
-                const feet = parseInt(document.getElementById('editFeet').value) || 0;
-                const inches = parseInt(document.getElementById('editInches').value) || 0;
-                const heightInCm = (feet * 30.48) + (inches * 2.54);
-                
-                if (heightInCm > 0) {
-                    // Get selected gender
-                    const activeGenderBtn = editPersonContent.querySelector('.gender-btn.active');
-                    const gender = activeGenderBtn ? activeGenderBtn.getAttribute('data-gender') : 'male';
-                    
-                    // Update person
-                    people[currentEditingIndex] = {
-                        name: name || 'Person ' + (currentEditingIndex + 1),
-                        height: heightInCm,
-                        color: editSelectedColor || getRandomColor(),
-                        gender: gender
-                    };
-                    
-                    // Redraw
-                    drawPeople();
+            addPersonContent.classList.remove('d-none');
+            editPersonContent.classList.add('d-none');
+            drawPeople();
+        });
+
+        // Optimize mousemove handler
+        canvas.addEventListener('mousemove', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            const labelIndex = isPointInLabel(x, y);
+            if (labelIndex !== hoveredLabel) {
+                hoveredLabel = labelIndex;
+                if (labelIndex !== -1) {
+                    const labelX = window.startX + (labelIndex * (60 + 40)) + 30; // personWidth/2
+                    const labelY = canvas.height - (people[labelIndex].height * canvas.height / 339) - 60;
+                    drawDeleteButton(labelX, labelY, labelIndex);
+                } else {
+                    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                    deleteButtonAreas = [];
                 }
-                
-                // Reset and switch back to add panel
-                currentEditingIndex = -1;
-                editSelectedColor = null;
-                addPersonContent.classList.remove('d-none');
-                editPersonContent.classList.add('d-none');
             }
         });
 
-        // Add color selection handlers for edit panel
-        editPersonContent.querySelectorAll('.color-option').forEach(option => {
-            option.addEventListener('click', () => {
-                editPersonContent.querySelectorAll('.color-option').forEach(opt => {
-                    opt.classList.remove('active');
-                });
-                option.classList.add('active');
-                editSelectedColor = option.style.backgroundColor;
-            });
+        // Add mouseout handler
+        canvas.addEventListener('mouseout', () => {
+            hoveredLabel = -1;
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            deleteButtonAreas = [];
         });
 
-        // Add color picker handler for edit panel
-        const editCustomColorBtn = document.getElementById('editCustomColorBtn');
-        const editColorPicker = document.getElementById('editColorPicker');
-
-        editCustomColorBtn.addEventListener('click', () => {
-            editColorPicker.click();
-        });
-
-        editColorPicker.addEventListener('input', (e) => {
-            const newColor = e.target.value;
-            editSelectedColor = newColor;
-            
-            // Remove active class from all color options
-            editPersonContent.querySelectorAll('.color-option').forEach(opt => {
-                opt.classList.remove('active');
-            });
-        });
-
-        // Add gender selection handlers for edit panel
-        editPersonContent.querySelectorAll('.gender-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                editPersonContent.querySelectorAll('.gender-btn').forEach(b => {
-                    b.classList.remove('active');
-                });
-                btn.classList.add('active');
-            });
-        });
+        // Initialize immediately
+        resizeCanvas();
     </script>
 </body>
 </html>
