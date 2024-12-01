@@ -747,188 +747,118 @@
         const editPanelHTML = `
             <div id="editPersonContent" class="content-section d-none">
                 <div class="sidebar">
-                    <h5 class="mb-4">Edit Person:</h5>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <button class="btn btn-primary" id="doneEditing">
-                            <i class="fas fa-check me-2"></i>Done Editing
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="mb-0">Edit People</h5>
+                        <button class="btn btn-link text-dark p-0" id="closeEditPanel">
+                            <i class="fas fa-times"></i>
                         </button>
                     </div>
-                    <div id="editPersonList" class="mb-4">
-                        <!-- Character labels will be added here dynamically -->
+                    <div id="editPanelContent">
+                        <!-- Edit forms will be dynamically added here -->
                     </div>
                 </div>
-            </div>`;
+            </div>
+        `;
 
-        // Insert edit panel after add person content
+        // Add the edit panel to the sidebar
         addPersonContent.insertAdjacentHTML('afterend', editPanelHTML);
 
+        // Get references to elements
         const editPersonContent = document.getElementById('editPersonContent');
-        const editPersonList = document.getElementById('editPersonList');
-        let currentEditingIndex = -1;
-        let editSelectedColor = null;
+        const editButton = document.getElementById('editMode');
+        const closeEditButton = document.getElementById('closeEditPanel');
 
-        function createEditForm(person, index) {
-            const backgroundColor = person.color;
-            const textColor = '#ffffff';
-            
-            return `
-                <div class="edit-form mb-3">
-                    <div class="d-flex gap-2 mb-3">
-                        <button class="gender-btn flex-grow-1 ${person.gender === 'male' ? 'active' : ''}" data-gender="male">
-                            <i class="fas fa-male me-2"></i>Male
-                        </button>
-                        <button class="gender-btn flex-grow-1 ${person.gender === 'female' ? 'active' : ''}" data-gender="female">
-                            <i class="fas fa-female me-2"></i>Female
-                        </button>
-                    </div>
+        // Add click handler for Edit button
+        editButton.addEventListener('click', () => {
+            addPersonContent.classList.add('d-none');
+            editPersonContent.classList.remove('d-none');
+            updateEditPanel();
+        });
 
-                    <div class="mb-3">
-                        <label class="form-label">Name</label>
-                        <input type="text" class="form-control edit-name" value="${person.name}" placeholder="Enter name">
-                    </div>
+        // Add click handler for Close button
+        closeEditButton.addEventListener('click', () => {
+            editPersonContent.classList.add('d-none');
+            addPersonContent.classList.remove('d-none');
+            drawPeople();
+        });
 
-                    <div class="mb-3">
-                        <label class="form-label">Height</label>
-                        <div class="d-flex gap-2">
-                            <input type="number" class="form-control edit-feet" value="${Math.floor(person.height/30.48)}" placeholder="ft">
-                            <input type="number" class="form-control edit-inches" value="${Math.round((person.height/2.54)%12)}" placeholder="in">
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="form-label">Choose Color</label>
-                        <div class="d-flex gap-2 flex-wrap align-items-center color-picker-container">
-                            <div class="color-options">
-                                <div class="color-option ${person.color === '#4361ee' ? 'active' : ''}" style="background: #4361ee"></div>
-                                <div class="color-option ${person.color === '#3a0ca3' ? 'active' : ''}" style="background: #3a0ca3"></div>
-                                <div class="color-option ${person.color === '#f72585' ? 'active' : ''}" style="background: #f72585"></div>
-                                <div class="color-option ${person.color === '#4cc9f0' ? 'active' : ''}" style="background: #4cc9f0"></div>
-                                <div class="color-option ${person.color === '#7209b7' ? 'active' : ''}" style="background: #7209b7"></div>
-                            </div>
-                            <div class="custom-color-wrapper">
-                                <button class="custom-color-btn">
-                                    <i class="fas fa-pencil-alt"></i>
-                                </button>
-                                <input type="color" class="custom-color-input" value="${person.color}">
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-        }
-
+        // Function to update edit panel content
         function updateEditPanel() {
-            editPersonList.innerHTML = '';
+            const editPanelContent = document.getElementById('editPanelContent');
+            editPanelContent.innerHTML = '';
+
             people.forEach((person, index) => {
-                const labelDiv = document.createElement('div');
-                labelDiv.className = 'person-label mb-3';
-                labelDiv.style.backgroundColor = person.color;
-                
-                const labelContent = `
-                    <div class="d-flex justify-content-between align-items-center p-3">
-                        <div>
-                            <strong>${person.name}</strong>
-                            <div class="small">${Math.round(person.height)}cm (${Math.floor(person.height/30.48)}'${Math.round((person.height/2.54)%12)}")</div>
+                const personHTML = `
+                    <div class="person-label mb-3" style="background-color: ${person.color}">
+                        <div class="d-flex justify-content-between align-items-center p-3">
+                            <span>${person.name}</span>
+                            <div>
+                                <button class="btn btn-link text-white p-0 edit-person-btn" 
+                                        data-bs-toggle="collapse" 
+                                        data-bs-target="#editForm${index}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
                         </div>
-                        <button class="btn btn-link text-white edit-person-btn" data-index="${index}">
-                            <i class="fas fa-pencil-alt"></i>
-                        </button>
+                        <div class="collapse" id="editForm${index}">
+                            <div class="mb-3">
+                                <label class="form-label">Name</label>
+                                <input type="text" class="form-control" value="${person.name}" 
+                                       onchange="updatePersonName(${index}, this.value)">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Height</label>
+                                <div class="d-flex gap-2">
+                                    <input type="number" class="form-control" placeholder="ft" 
+                                           value="${Math.floor(person.height/30.48)}"
+                                           onchange="updatePersonHeight(${index}, this.value, 'feet')">
+                                    <input type="number" class="form-control" placeholder="in" 
+                                           value="${Math.round((person.height/2.54)%12)}"
+                                           onchange="updatePersonHeight(${index}, this.value, 'inches')">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Color</label>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <input type="color" class="form-control form-control-color" 
+                                           value="${person.color}"
+                                           onchange="updatePersonColor(${index}, this.value)">
+                                </div>
+                            </div>
+                            <button class="btn btn-danger w-100" onclick="deletePerson(${index})">
+                                <i class="fas fa-trash-alt me-2"></i>Delete
+                            </button>
+                        </div>
                     </div>
-                    <div class="collapse" id="editForm${index}">
-                        ${createEditForm(person, index)}
-                    </div>`;
-                
-                labelDiv.innerHTML = labelContent;
-                editPersonList.appendChild(labelDiv);
-
-                // Add event listeners for this label's form
-                const form = labelDiv.querySelector(`#editForm${index}`);
-                const editBtn = labelDiv.querySelector('.edit-person-btn');
-                
-                editBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    // Close all other forms
-                    document.querySelectorAll('.collapse').forEach(collapse => {
-                        if (collapse.id !== `editForm${index}`) {
-                            collapse.classList.remove('show');
-                        }
-                    });
-                    // Toggle this form
-                    form.classList.toggle('show');
-                });
-
-                // Add event listeners for form elements
-                const formElements = form.querySelectorAll('input, button');
-                formElements.forEach(element => {
-                    element.addEventListener('change', () => {
-                        // Update person object
-                        const nameInput = form.querySelector('.edit-name');
-                        const feetInput = form.querySelector('.edit-feet');
-                        const inchesInput = form.querySelector('.edit-inches');
-                        const activeGenderBtn = form.querySelector('.gender-btn.active');
-                        const activeColorOption = form.querySelector('.color-option.active');
-                        const colorPicker = form.querySelector('.custom-color-input');
-
-                        const heightInCm = (parseInt(feetInput.value) || 0) * 30.48 + 
-                                         (parseInt(inchesInput.value) || 0) * 2.54;
-
-                        people[index] = {
-                            ...person,
-                            name: nameInput.value || `Person ${index + 1}`,
-                            height: heightInCm,
-                            gender: activeGenderBtn ? activeGenderBtn.getAttribute('data-gender') : person.gender,
-                            color: activeColorOption ? activeColorOption.style.backgroundColor : 
-                                   colorPicker.value !== person.color ? colorPicker.value : person.color
-                        };
-
-                        // Update label display
-                        const labelText = labelDiv.querySelector('strong');
-                        const heightText = labelDiv.querySelector('.small');
-                        labelText.textContent = people[index].name;
-                        heightText.textContent = `${Math.round(heightInCm)}cm (${Math.floor(heightInCm/30.48)}'${Math.round((heightInCm/2.54)%12)}")`;
-                    });
-                });
+                `;
+                editPanelContent.insertAdjacentHTML('beforeend', personHTML);
             });
         }
 
-        // Add styles for edit panel
-        const style = document.createElement('style');
-        style.textContent = `
-            .person-label {
-                border-radius: 8px;
-                color: white;
-                overflow: hidden;
-                margin-bottom: 10px;
-            }
-            .person-label .collapse {
-                background: white;
-                color: #333;
-                padding: 1rem;
-            }
-            .edit-person-btn {
-                padding: 0.25rem 0.5rem;
-                color: white !important;
-            }
-            .edit-person-btn:hover {
-                opacity: 0.8;
-            }
-            .person-label .form-control {
-                background: #f8f9fa;
-                border: 1px solid #dee2e6;
-            }
-            .person-label .color-option {
-                width: 25px;
-                height: 25px;
-            }
-            .person-label .custom-color-btn {
-                width: 25px;
-                height: 25px;
-            }
-            .person-label .custom-color-input {
-                width: 25px;
-                height: 25px;
-            }
-        `;
-        document.head.appendChild(style);
+        // Functions to update person properties
+        function updatePersonName(index, newName) {
+            people[index].name = newName;
+            drawPeople();
+        }
+
+        function updatePersonHeight(index, value, type) {
+            const feet = type === 'feet' ? parseFloat(value) : Math.floor(people[index].height/30.48);
+            const inches = type === 'inches' ? parseFloat(value) : Math.round((people[index].height/2.54)%12);
+            people[index].height = (feet * 30.48) + (inches * 2.54);
+            drawPeople();
+        }
+
+        function updatePersonColor(index, newColor) {
+            people[index].color = newColor;
+            drawPeople();
+            updateEditPanel(); // Refresh the edit panel to update background colors
+        }
+
+        function deletePerson(index) {
+            people.splice(index, 1);
+            drawPeople();
+            updateEditPanel();
+        }
 
         // Draw people function
         async function drawPeople() {
@@ -1015,7 +945,7 @@
             );
         }
 
-        // Draw delete/edit buttons
+        // Draw delete/edit buttons on hover
         function drawDeleteButton(labelX, labelY, index) {
             overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
             
@@ -1064,7 +994,7 @@
             overlayCtx.fillText('\uf2ed', deleteButtonX + buttonSize/2, buttonY + buttonSize/2);
         }
 
-        // Update click handler to handle edit action
+        // Update click handler to handle both hover icons and edit panel
         canvas.addEventListener('click', (event) => {
             const rect = canvas.getBoundingClientRect();
             const x = event.clientX - rect.left;
@@ -1098,13 +1028,6 @@
                     }
                 }
             }
-        });
-
-        // Add Done Editing button handler
-        document.getElementById('doneEditing').addEventListener('click', () => {
-            addPersonContent.classList.remove('d-none');
-            editPersonContent.classList.add('d-none');
-            drawPeople();
         });
 
         // Optimize mousemove handler
