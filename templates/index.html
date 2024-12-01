@@ -382,6 +382,7 @@
             cursor: pointer;
             transition: all 0.3s ease;
             color: #666;
+            user-select: none;
         }
 
         .nav-item:hover {
@@ -436,6 +437,35 @@
         .person-label .custom-color-input {
             width: 25px;
             height: 25px;
+        }
+
+        .suggestion-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .suggestion-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        .suggestion-item:hover {
+            background: #f5f5f5;
+        }
+        .suggestion-item .name {
+            font-weight: 500;
+        }
+        .suggestion-item .details {
+            font-size: 0.8em;
+            color: #666;
         }
     </style>
 </head>
@@ -517,8 +547,40 @@
 
                 <div id="celebritiesContent" class="content-section d-none">
                     <div class="sidebar">
-                        <h5 class="mb-4">Celebrities</h5>
-                        <!-- Add celebrities content here -->
+                        <h5 class="mb-4">Add Celebrity</h5>
+                        <div class="mb-4">
+                            <div class="mb-3">
+                                <label class="form-label">Celebrity Name</label>
+                                <div class="position-relative">
+                                    <input type="text" id="celebrityName" class="form-control" placeholder="Enter celebrity name">
+                                    <div id="celebritySuggestions" class="suggestion-dropdown d-none">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Choose Color</label>
+                            <div class="d-flex gap-2 flex-wrap align-items-center color-picker-container">
+                                <div class="color-options">
+                                    <div class="color-option" style="background: #4361ee"></div>
+                                    <div class="color-option" style="background: #3a0ca3"></div>
+                                    <div class="color-option" style="background: #f72585"></div>
+                                    <div class="color-option" style="background: #4cc9f0"></div>
+                                    <div class="color-option" style="background: #7209b7"></div>
+                                </div>
+                                <div class="custom-color-wrapper">
+                                    <button class="custom-color-btn" id="celebrityCustomColorBtn">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </button>
+                                    <input type="color" id="celebrityColorPicker" class="custom-color-input">
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary w-100" id="addCelebrity">
+                            <i class="fas fa-plus me-2"></i>Add Celebrity
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1059,6 +1121,282 @@
 
         // Initialize immediately
         resizeCanvas();
+
+        // Add styles for suggestions dropdown
+        const style = document.createElement('style');
+        style.textContent = `
+            .suggestion-dropdown {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                max-height: 200px;
+                overflow-y: auto;
+                z-index: 1000;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .suggestion-item {
+                padding: 8px 12px;
+                cursor: pointer;
+                border-bottom: 1px solid #eee;
+            }
+            .suggestion-item:hover {
+                background: #f5f5f5;
+            }
+            .suggestion-item .name {
+                font-weight: 500;
+            }
+            .suggestion-item .details {
+                font-size: 0.8em;
+                color: #666;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Add debounce function
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Celebrity search functionality
+        const celebrityNameInput = document.getElementById('celebrityName');
+        const suggestionsList = document.getElementById('celebritySuggestions');
+        let selectedCelebrity = null;
+
+        const fetchCelebrities = async (searchTerm) => {
+            try {
+                const response = await fetch(`https://api-v2.heightcomparison.com/celebrities?search=${encodeURIComponent(searchTerm)}`);
+                const data = await response.json();
+                return data.items;
+            } catch (error) {
+                console.error('Error fetching celebrities:', error);
+                return [];
+            }
+        };
+
+        const showSuggestions = (celebrities) => {
+            if (celebrities.length === 0) {
+                suggestionsList.classList.add('d-none');
+                return;
+            }
+
+            suggestionsList.innerHTML = celebrities.map(celebrity => `
+                <div class="suggestion-item" data-celebrity='${JSON.stringify(celebrity)}'>
+                    <div class="name">${celebrity.name}</div>
+                    <div class="details">
+                        Height: ${celebrity.height}cm | 
+                        ${celebrity.gender === 'm' ? 'Male' : 'Female'} | 
+                        ${celebrity.category}
+                    </div>
+                </div>
+            `).join('');
+
+            suggestionsList.classList.remove('d-none');
+        };
+
+        const debouncedSearch = debounce(async (searchTerm) => {
+            if (searchTerm.length < 2) {
+                suggestionsList.classList.add('d-none');
+                return;
+            }
+            const celebrities = await fetchCelebrities(searchTerm);
+            showSuggestions(celebrities);
+        }, 300);
+
+        celebrityNameInput.addEventListener('input', (e) => {
+            selectedCelebrity = null;
+            debouncedSearch(e.target.value);
+        });
+
+        suggestionsList.addEventListener('click', (e) => {
+            const suggestionItem = e.target.closest('.suggestion-item');
+            if (suggestionItem) {
+                selectedCelebrity = JSON.parse(suggestionItem.dataset.celebrity);
+                celebrityNameInput.value = selectedCelebrity.name;
+                suggestionsList.classList.add('d-none');
+            }
+        });
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!celebrityNameInput.contains(e.target) && !suggestionsList.contains(e.target)) {
+                suggestionsList.classList.add('d-none');
+            }
+        });
+
+        // Add celebrity color selection handlers
+        const celebrityColorOptions = document.querySelectorAll('#celebritiesContent .color-option');
+        let selectedCelebrityColor = null;
+
+        celebrityColorOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                celebrityColorOptions.forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+                selectedCelebrityColor = option.style.backgroundColor;
+            });
+        });
+
+        // Add celebrity color picker handler
+        const celebrityCustomColorBtn = document.getElementById('celebrityCustomColorBtn');
+        const celebrityColorPicker = document.getElementById('celebrityColorPicker');
+
+        celebrityCustomColorBtn.addEventListener('click', () => {
+            celebrityColorPicker.click();
+        });
+
+        celebrityColorPicker.addEventListener('input', (e) => {
+            selectedCelebrityColor = e.target.value;
+            celebrityColorOptions.forEach(opt => opt.classList.remove('active'));
+        });
+
+        // Update add celebrity button handler
+        const addCelebrityBtn = document.getElementById('addCelebrity');
+        addCelebrityBtn.addEventListener('click', () => {
+            if (!selectedCelebrity) {
+                alert('Please select a celebrity from the suggestions');
+                return;
+            }
+
+            // Get color from either color picker or selected option or random
+            let celebrityColor;
+            const activeColorOption = document.querySelector('#celebritiesContent .color-option.active');
+            
+            if (selectedCelebrityColor) {
+                celebrityColor = selectedCelebrityColor;
+            } else if (activeColorOption) {
+                celebrityColor = activeColorOption.style.backgroundColor;
+            } else {
+                celebrityColor = getRandomColor();
+            }
+
+            const celebrity = {
+                name: selectedCelebrity.name,
+                height: parseFloat(selectedCelebrity.height),
+                color: celebrityColor,
+                gender: selectedCelebrity.gender === 'm' ? 'male' : 'female'
+            };
+
+            people.push(celebrity);
+            
+            // Clear inputs and selections
+            celebrityNameInput.value = '';
+            selectedCelebrity = null;
+            selectedCelebrityColor = null;
+            
+            // Remove active class from color options
+            celebrityColorOptions.forEach(opt => {
+                opt.classList.remove('active');
+            });
+
+            // Switch back to main view and draw
+            navItems[0].click();
+            drawPeople();
+        });
+
+        // Add navigation functionality
+        const navItems = document.querySelectorAll('.nav-item');
+        const contentSections = document.querySelectorAll('.content-section');
+
+        // Add navigation click handlers
+        navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Nav item clicked:', item.getAttribute('data-target'));
+                
+                // Remove active class from all items
+                navItems.forEach(nav => nav.classList.remove('active'));
+                
+                // Add active class to clicked item
+                item.classList.add('active');
+                
+                // Hide all content sections
+                contentSections.forEach(section => {
+                    console.log('Hiding section:', section.id);
+                    section.classList.add('d-none');
+                });
+                
+                // Show the selected content section
+                const targetId = item.getAttribute('data-target') + 'Content';
+                console.log('Showing section:', targetId);
+                const targetSection = document.getElementById(targetId);
+                if (targetSection) {
+                    targetSection.classList.remove('d-none');
+                } else {
+                    console.error('Target section not found:', targetId);
+                }
+            });
+        });
+
+        // Log initial state
+        console.log('Found nav items:', navItems.length);
+        console.log('Found content sections:', contentSections.length);
+
+        // Make sure Add Person tab is active by default
+        const defaultTab = document.querySelector('.nav-item[data-target="addPerson"]');
+        if (defaultTab) {
+            defaultTab.classList.add('active');
+            document.getElementById('addPersonContent').classList.remove('d-none');
+            document.getElementById('celebritiesContent').classList.add('d-none');
+        } else {
+            console.error('Default tab not found');
+        }
+
+        // Add specific handler for celebrities tab
+        const celebritiesTab = document.querySelector('.nav-item[data-target="celebrities"]');
+        if (celebritiesTab) {
+            celebritiesTab.addEventListener('click', () => {
+                // Remove active class from all items
+                navItems.forEach(nav => nav.classList.remove('active'));
+                
+                // Add active class to celebrities tab
+                celebritiesTab.classList.add('active');
+                
+                // Hide all content sections
+                contentSections.forEach(section => {
+                    section.classList.add('d-none');
+                });
+                
+                // Show celebrities content
+                const celebritiesContent = document.getElementById('celebritiesContent');
+                if (celebritiesContent) {
+                    celebritiesContent.classList.remove('d-none');
+                }
+            });
+        }
+
+        // Add specific handler for add person tab
+        const addPersonTab = document.querySelector('.nav-item[data-target="addPerson"]');
+        if (addPersonTab) {
+            addPersonTab.addEventListener('click', () => {
+                // Remove active class from all items
+                navItems.forEach(nav => nav.classList.remove('active'));
+                
+                // Add active class to add person tab
+                addPersonTab.classList.add('active');
+                
+                // Hide all content sections
+                contentSections.forEach(section => {
+                    section.classList.add('d-none');
+                });
+                
+                // Show add person content
+                const addPersonContent = document.getElementById('addPersonContent');
+                if (addPersonContent) {
+                    addPersonContent.classList.remove('d-none');
+                }
+            });
+        }
     </script>
 </body>
 </html>
