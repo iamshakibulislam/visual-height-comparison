@@ -524,12 +524,24 @@
 
         // Draw height measurement lines and labels
         function drawHeightScales() {
-            const maxHeight = 255;
+            const maxHeight = 339;
             const heightPx = canvas.height;
-            const heights = [255, 242, 229, 216, 204, 191, 178, 165, 153, 140, 127, 115, 102, 89, 76, 64, 51, 38, 25, 13];
+            const heights = [];
+            for (let h = 339; h >= 0; h -= 17) {
+                heights.push(h);
+            }
+            if (heights[heights.length - 1] !== 0) {
+                heights.push(0);
+            }
 
             // Clear canvas first
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Clear the right scale first
+            const rightScale = document.getElementById('heightScaleFt');
+            if(rightScale) {
+                rightScale.innerHTML = '';
+            }
 
             // Draw grid lines for each specific height
             heights.forEach(h => {
@@ -537,16 +549,26 @@
                 
                 // Draw line across entire canvas width
                 ctx.beginPath();
-                ctx.strokeStyle = '#e9ecef';
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 0.5;
                 ctx.moveTo(0, position);
                 ctx.lineTo(canvas.width, position);
                 ctx.stroke();
 
-                // Add cm label directly on canvas
-                ctx.fillStyle = '#666';
-                ctx.font = '12px Arial';
+                // Add cm label directly on canvas (left side)
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 12px Arial';
                 ctx.textAlign = 'left';
                 ctx.fillText(`${h}`, 5, position - 5);
+
+                // Add feet/inches label on the right side
+                const feet = Math.floor(h/30.48);
+                const inches = Math.round((h/2.54)%12);
+                const rightLabel = `${feet}'${inches}"`;
+                
+                // Draw right side label directly on canvas
+                ctx.textAlign = 'right';
+                ctx.fillText(rightLabel, canvas.width - 5, position - 5);
             });
         }
 
@@ -656,13 +678,8 @@
                 ctx.textBaseline = 'middle';
                 ctx.fillText('\uf2ed', deleteButtonX + deleteButtonSize/2, deleteButtonY + deleteButtonSize/2);
                 
-                // Draw label
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.roundRect(labelX - 50, labelY - 10, 100, 60, 5);
-                ctx.fill();
-                
-                ctx.fillStyle = '#333';
+                // Draw label (without background)
+                ctx.fillStyle = '#000000';
                 ctx.font = 'bold 14px Arial';
                 ctx.textAlign = 'center';
                 
@@ -689,7 +706,7 @@
         // Initialize canvas size
         function resizeCanvas() {
             const container = document.querySelector('.canvas-container');
-            canvas.width = container.offsetWidth;
+            canvas.width = container.offsetWidth - 20;
             canvas.height = container.offsetHeight;
             drawHeightScales();
             drawPeople();
