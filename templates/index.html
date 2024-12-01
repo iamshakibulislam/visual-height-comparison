@@ -574,31 +574,119 @@
 
         // Store click areas for delete buttons
         let deleteButtonAreas = [];
+        let hoveredLabel = -1;
+        let isDrawing = false;
 
-        // Function to check if click is within a delete button
-        function isClickOnDeleteButton(x, y) {
-            return deleteButtonAreas.findIndex(area => 
+        // Create an overlay canvas for delete buttons
+        const overlayCanvas = document.createElement('canvas');
+        overlayCanvas.style.position = 'absolute';
+        overlayCanvas.style.top = '0';
+        overlayCanvas.style.left = '0';
+        overlayCanvas.style.pointerEvents = 'none';
+        document.querySelector('.canvas-container').appendChild(overlayCanvas);
+        const overlayCtx = overlayCanvas.getContext('2d');
+
+        // Function to check if point is within a label area
+        function isPointInLabel(x, y) {
+            return window.labelAreas.findIndex(area => 
                 x >= area.x && x <= area.x + area.width &&
                 y >= area.y && y <= area.y + area.height
             );
         }
 
-        // Add canvas click handler for delete buttons
+        function resizeCanvases() {
+            const container = document.querySelector('.canvas-container');
+            canvas.width = container.offsetWidth - 20;
+            canvas.height = container.offsetHeight;
+            overlayCanvas.width = canvas.width;
+            overlayCanvas.height = canvas.height;
+            drawHeightScales();
+            drawPeople();
+        }
+
+        // Update resize event listener
+        window.addEventListener('resize', resizeCanvases);
+
+        // Initialize immediately
+        resizeCanvases();
+
+        function drawDeleteButton(labelX, labelY, index) {
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            
+            const deleteButtonSize = 24;
+            const deleteButtonX = labelX - deleteButtonSize/2;
+            const deleteButtonY = labelY - 35;
+            
+            // Store delete button area for click detection
+            deleteButtonAreas = [{
+                x: deleteButtonX,
+                y: deleteButtonY,
+                width: deleteButtonSize,
+                height: deleteButtonSize,
+                index: index
+            }];
+
+            // Draw delete button background circle
+            overlayCtx.beginPath();
+            overlayCtx.fillStyle = '#ff4444';
+            overlayCtx.arc(deleteButtonX + deleteButtonSize/2, deleteButtonY + deleteButtonSize/2, deleteButtonSize/2, 0, Math.PI * 2);
+            overlayCtx.fill();
+
+            // Draw trash icon
+            overlayCtx.fillStyle = 'white';
+            overlayCtx.font = '14px "Font Awesome 5 Free"';
+            overlayCtx.textAlign = 'center';
+            overlayCtx.textBaseline = 'middle';
+            overlayCtx.fillText('\uf2ed', deleteButtonX + deleteButtonSize/2, deleteButtonY + deleteButtonSize/2);
+        }
+
+        // Optimize mousemove handler
+        canvas.addEventListener('mousemove', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            const labelIndex = isPointInLabel(x, y);
+            if (labelIndex !== hoveredLabel) {
+                hoveredLabel = labelIndex;
+                if (labelIndex !== -1) {
+                    const labelX = window.startX + (labelIndex * (60 + 40)) + 30; // personWidth/2
+                    const labelY = canvas.height - (people[labelIndex].height * canvas.height / 339) - 60;
+                    drawDeleteButton(labelX, labelY, labelIndex);
+                } else {
+                    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                    deleteButtonAreas = [];
+                }
+            }
+        });
+
+        // Add click handler for delete buttons
         canvas.addEventListener('click', (event) => {
             const rect = canvas.getBoundingClientRect();
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
             
-            const deleteIndex = isClickOnDeleteButton(x, y);
+            const deleteIndex = deleteButtonAreas.findIndex(area => 
+                x >= area.x && x <= area.x + area.width &&
+                y >= area.y && y <= area.y + area.height
+            );
+            
             if (deleteIndex !== -1) {
-                // Remove the person at this index
-                people.splice(deleteIndex, 1);
-                // Redraw the canvas
+                const personIndex = deleteButtonAreas[deleteIndex].index;
+                people.splice(personIndex, 1);
+                hoveredLabel = -1;
+                overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
                 drawPeople();
             }
         });
 
-        // Update drawPeople function to include delete buttons
+        canvas.addEventListener('mouseout', () => {
+            hoveredLabel = -1;
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            deleteButtonAreas = [];
+        });
+
+        // Update drawPeople function to not handle delete buttons
         async function drawPeople() {
             // Clear delete button areas
             deleteButtonAreas = [];
@@ -615,7 +703,7 @@
             // Draw each person
             for (const [index, person] of people.entries()) {
                 const x = window.startX + (index * (personWidth + spacing));
-                const pixelHeight = (person.height * canvas.height) / 255;
+                const pixelHeight = (person.height * canvas.height) / 339;
                 const y = canvas.height - pixelHeight;
                 
                 let svgData;
@@ -651,34 +739,7 @@
                 const labelX = x + personWidth/2;
                 const labelY = y - 60;
                 
-                // Draw delete button
-                const deleteButtonSize = 24;
-                const deleteButtonX = labelX - deleteButtonSize/2;
-                const deleteButtonY = labelY - 35;
-                
-                // Store delete button area for click detection
-                deleteButtonAreas.push({
-                    x: deleteButtonX,
-                    y: deleteButtonY,
-                    width: deleteButtonSize,
-                    height: deleteButtonSize,
-                    index: index
-                });
-
-                // Draw delete button background circle
-                ctx.beginPath();
-                ctx.fillStyle = '#ff4444';
-                ctx.arc(deleteButtonX + deleteButtonSize/2, deleteButtonY + deleteButtonSize/2, deleteButtonSize/2, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Draw trash icon
-                ctx.fillStyle = 'white';
-                ctx.font = '14px "Font Awesome 5 Free"';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('\uf2ed', deleteButtonX + deleteButtonSize/2, deleteButtonY + deleteButtonSize/2);
-                
-                // Draw label (without background)
+                // Draw label
                 ctx.fillStyle = '#000000';
                 ctx.font = 'bold 14px Arial';
                 ctx.textAlign = 'center';
@@ -697,8 +758,7 @@
                     y: labelY - 35,
                     width: 100,
                     height: 85,
-                    person: index,
-                    isHovered: false
+                    person: index
                 });
             }
         }
@@ -722,10 +782,10 @@
         // Helper function for random color
         function getRandomColor() {
             const colors = [
-                '#4361ee', '#3a0ca3', '#f72585', '#4cc9f0', '#7209b7',
-                '#480ca8', '#3f37c9', '#4895ef', '#560bad', '#b5179e',
-                '#ff006e', '#8338ec', '#3a86ff', '#fb5607', '#ff006e',
-                '#3c096c', '#240046', '#10002b', '#e63946', '#2a9d8f'
+                '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD',
+                '#D4A5A5', '#9B59B6', '#3498DB', '#E74C3C', '#1ABC9C',
+                '#F1C40F', '#2ECC71', '#E67E22', '#9B59B6', '#34495E',
+                '#16A085', '#27AE60', '#2980B9', '#8E44AD', '#F39C12'
             ];
             return colors[Math.floor(Math.random() * colors.length)];
         }
