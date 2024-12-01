@@ -613,32 +613,71 @@
         function drawDeleteButton(labelX, labelY, index) {
             overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
             
-            const deleteButtonSize = 24;
-            const deleteButtonX = labelX - deleteButtonSize/2;
-            const deleteButtonY = labelY - 35;
+            const buttonSize = 24;
+            const spacing = 10;
+            const totalWidth = buttonSize * 2 + spacing;
             
-            // Store delete button area for click detection
-            deleteButtonAreas = [{
-                x: deleteButtonX,
-                y: deleteButtonY,
-                width: deleteButtonSize,
-                height: deleteButtonSize,
-                index: index
-            }];
+            // Calculate positions to center both icons
+            const startX = labelX - totalWidth/2 - 8;
+            const editButtonX = startX;
+            const deleteButtonX = startX + buttonSize + spacing;
+            const buttonY = labelY - 40;
+            
+            // Store button areas
+            deleteButtonAreas = [
+                {
+                    x: editButtonX,
+                    y: buttonY,
+                    width: buttonSize,
+                    height: buttonSize,
+                    index: index,
+                    type: 'edit'
+                },
+                {
+                    x: deleteButtonX,
+                    y: buttonY,
+                    width: buttonSize,
+                    height: buttonSize,
+                    index: index,
+                    type: 'delete'
+                }
+            ];
 
-            // Draw delete button background circle
-            overlayCtx.beginPath();
-            overlayCtx.fillStyle = '#ff4444';
-            overlayCtx.arc(deleteButtonX + deleteButtonSize/2, deleteButtonY + deleteButtonSize/2, deleteButtonSize/2, 0, Math.PI * 2);
-            overlayCtx.fill();
-
-            // Draw trash icon
-            overlayCtx.fillStyle = 'white';
-            overlayCtx.font = '14px "Font Awesome 5 Free"';
+            // Draw pencil icon
+            overlayCtx.fillStyle = '#000000';
+            overlayCtx.font = 'bold 16px "Font Awesome 5 Free"';
             overlayCtx.textAlign = 'center';
             overlayCtx.textBaseline = 'middle';
-            overlayCtx.fillText('\uf2ed', deleteButtonX + deleteButtonSize/2, deleteButtonY + deleteButtonSize/2);
+            overlayCtx.fillText('\uf044', editButtonX + buttonSize/2, buttonY + buttonSize/2);
+
+            // Draw trash icon
+            overlayCtx.fillStyle = '#000000';
+            overlayCtx.font = 'bold 16px "Font Awesome 5 Free"';
+            overlayCtx.textAlign = 'center';
+            overlayCtx.textBaseline = 'middle';
+            overlayCtx.fillText('\uf2ed', deleteButtonX + buttonSize/2, buttonY + buttonSize/2);
         }
+
+        // Update click handler to only handle delete
+        canvas.addEventListener('click', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            const clickedButton = deleteButtonAreas.find(area => 
+                x >= area.x && x <= area.x + area.width &&
+                y >= area.y && y <= area.y + area.height
+            );
+            
+            if (clickedButton && clickedButton.type === 'delete') {
+                // Only handle delete action
+                people.splice(clickedButton.index, 1);
+                hoveredLabel = -1;
+                overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                drawPeople();
+            }
+            // Edit action is ignored for now
+        });
 
         // Optimize mousemove handler
         canvas.addEventListener('mousemove', (event) => {
@@ -660,26 +699,7 @@
             }
         });
 
-        // Add click handler for delete buttons
-        canvas.addEventListener('click', (event) => {
-            const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
-            
-            const deleteIndex = deleteButtonAreas.findIndex(area => 
-                x >= area.x && x <= area.x + area.width &&
-                y >= area.y && y <= area.y + area.height
-            );
-            
-            if (deleteIndex !== -1) {
-                const personIndex = deleteButtonAreas[deleteIndex].index;
-                people.splice(personIndex, 1);
-                hoveredLabel = -1;
-                overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-                drawPeople();
-            }
-        });
-
+        // Add mouseout handler
         canvas.addEventListener('mouseout', () => {
             hoveredLabel = -1;
             overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
