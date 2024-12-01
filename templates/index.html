@@ -459,7 +459,7 @@
                             <label class="form-label">Choose Color</label>
                             <div class="d-flex gap-2 flex-wrap align-items-center color-picker-container">
                                 <div class="color-options">
-                                    <div class="color-option active" style="background: #4361ee"></div>
+                                    <div class="color-option" style="background: #4361ee"></div>
                                     <div class="color-option" style="background: #3a0ca3"></div>
                                     <div class="color-option" style="background: #f72585"></div>
                                     <div class="color-option" style="background: #4cc9f0"></div>
@@ -719,6 +719,17 @@
         // Initialize immediately
         resizeCanvas();
 
+        // Helper function for random color
+        function getRandomColor() {
+            const colors = [
+                '#4361ee', '#3a0ca3', '#f72585', '#4cc9f0', '#7209b7',
+                '#480ca8', '#3f37c9', '#4895ef', '#560bad', '#b5179e',
+                '#ff006e', '#8338ec', '#3a86ff', '#fb5607', '#ff006e',
+                '#3c096c', '#240046', '#10002b', '#e63946', '#2a9d8f'
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
         // Add these event listeners and functions
         document.getElementById('addPerson').addEventListener('click', async () => {
             const name = document.getElementById('name').value;
@@ -728,7 +739,7 @@
             const heightInCm = (feet * 30.48) + (inches * 2.54);
             
             if (heightInCm > 0) {
-                // Get color from either color picker or default options or random
+                // Get color from either color picker or selected option or random
                 let personColor;
                 const activeColorOption = document.querySelector('.color-option.active');
                 
@@ -749,12 +760,18 @@
 
                 people.push(person);
                 
-                // Clear inputs
+                // Clear inputs and selections
                 document.getElementById('name').value = '';
                 document.getElementById('feet').value = '';
                 document.getElementById('inches').value = '';
+                selectedColor = null;
                 
-                // Reset gender selection
+                // Remove active class from color options
+                document.querySelectorAll('.color-option').forEach(opt => {
+                    opt.classList.remove('active');
+                });
+                
+                // Reset gender selection to male
                 document.querySelectorAll('.gender-btn').forEach((btn, index) => {
                     if (index === 0) {
                         btn.classList.add('active');
@@ -816,15 +833,6 @@
             // Redraw the canvas with just the height scales
             drawHeightScales();
         });
-
-        // Helper function for random color
-        function getRandomColor() {
-            const colors = [
-                '#4361ee', '#3a0ca3', '#f72585', '#4cc9f0', '#7209b7',
-                '#480ca8', '#3f37c9', '#4895ef', '#560bad', '#b5179e'
-            ];
-            return colors[Math.floor(Math.random() * colors.length)];
-        }
     </script>
 </body>
 </html>
