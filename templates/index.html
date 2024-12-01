@@ -913,6 +913,196 @@
             // Redraw the canvas with just the height scales
             drawHeightScales();
         });
+
+        // Add edit panel HTML to the sidebar
+        const addPersonContent = document.getElementById('addPersonContent');
+        const editPanelHTML = `
+            <div id="editPersonContent" class="content-section d-none">
+                <div class="sidebar">
+                    <h5 class="mb-4">Edit Person</h5>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <button class="btn btn-primary" id="doneEditing">
+                            <i class="fas fa-check me-2"></i>Done Editing
+                        </button>
+                    </div>
+                    <div class="mb-4">
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="gender-btn flex-grow-1" data-gender="male">
+                                <i class="fas fa-male me-2"></i>Male
+                            </button>
+                            <button class="gender-btn flex-grow-1" data-gender="female">
+                                <i class="fas fa-female me-2"></i>Female
+                            </button>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <input type="text" id="editName" class="form-control" placeholder="Enter name">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Height</label>
+                            <div class="d-flex gap-2">
+                                <input type="number" id="editFeet" class="form-control" placeholder="ft">
+                                <input type="number" id="editInches" class="form-control" placeholder="in">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Choose Color</label>
+                        <div class="d-flex gap-2 flex-wrap align-items-center color-picker-container">
+                            <div class="color-options">
+                                <div class="color-option" style="background: #4361ee"></div>
+                                <div class="color-option" style="background: #3a0ca3"></div>
+                                <div class="color-option" style="background: #f72585"></div>
+                                <div class="color-option" style="background: #4cc9f0"></div>
+                                <div class="color-option" style="background: #7209b7"></div>
+                            </div>
+                            <div class="custom-color-wrapper">
+                                <button class="custom-color-btn" id="editCustomColorBtn">
+                                    <i class="fas fa-pencil-alt"></i>
+                                </button>
+                                <input type="color" id="editColorPicker" class="custom-color-input">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+
+        // Insert edit panel after add person content
+        addPersonContent.insertAdjacentHTML('afterend', editPanelHTML);
+
+        const editPersonContent = document.getElementById('editPersonContent');
+        let currentEditingIndex = -1;
+        let editSelectedColor = null;
+
+        // Update click handler to handle edit action
+        canvas.addEventListener('click', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            const clickedButton = deleteButtonAreas.find(area => 
+                x >= area.x && x <= area.x + area.width &&
+                y >= area.y && y <= area.y + area.height
+            );
+            
+            if (clickedButton) {
+                if (clickedButton.type === 'delete') {
+                    // Handle delete
+                    people.splice(clickedButton.index, 1);
+                    hoveredLabel = -1;
+                    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                    drawPeople();
+                } else if (clickedButton.type === 'edit') {
+                    // Handle edit
+                    const person = people[clickedButton.index];
+                    currentEditingIndex = clickedButton.index;
+                    
+                    // Switch to edit panel
+                    addPersonContent.classList.add('d-none');
+                    editPersonContent.classList.remove('d-none');
+                    
+                    // Fill the form with person's data
+                    document.getElementById('editName').value = person.name;
+                    const feet = Math.floor(person.height/30.48);
+                    const inches = Math.round((person.height/2.54)%12);
+                    document.getElementById('editFeet').value = feet;
+                    document.getElementById('editInches').value = inches;
+                    
+                    // Set gender
+                    editPersonContent.querySelectorAll('.gender-btn').forEach(btn => {
+                        if (btn.getAttribute('data-gender') === person.gender) {
+                            btn.classList.add('active');
+                        } else {
+                            btn.classList.remove('active');
+                        }
+                    });
+                    
+                    // Set color
+                    editSelectedColor = person.color;
+                    editPersonContent.querySelectorAll('.color-option').forEach(opt => {
+                        opt.classList.remove('active');
+                        if (opt.style.backgroundColor === person.color) {
+                            opt.classList.add('active');
+                        }
+                    });
+                }
+            }
+        });
+
+        // Add event listeners for edit panel
+        document.getElementById('doneEditing').addEventListener('click', () => {
+            if (currentEditingIndex !== -1) {
+                const name = document.getElementById('editName').value;
+                const feet = parseInt(document.getElementById('editFeet').value) || 0;
+                const inches = parseInt(document.getElementById('editInches').value) || 0;
+                const heightInCm = (feet * 30.48) + (inches * 2.54);
+                
+                if (heightInCm > 0) {
+                    // Get selected gender
+                    const activeGenderBtn = editPersonContent.querySelector('.gender-btn.active');
+                    const gender = activeGenderBtn ? activeGenderBtn.getAttribute('data-gender') : 'male';
+                    
+                    // Update person
+                    people[currentEditingIndex] = {
+                        name: name || 'Person ' + (currentEditingIndex + 1),
+                        height: heightInCm,
+                        color: editSelectedColor || getRandomColor(),
+                        gender: gender
+                    };
+                    
+                    // Redraw
+                    drawPeople();
+                }
+                
+                // Reset and switch back to add panel
+                currentEditingIndex = -1;
+                editSelectedColor = null;
+                addPersonContent.classList.remove('d-none');
+                editPersonContent.classList.add('d-none');
+            }
+        });
+
+        // Add color selection handlers for edit panel
+        editPersonContent.querySelectorAll('.color-option').forEach(option => {
+            option.addEventListener('click', () => {
+                editPersonContent.querySelectorAll('.color-option').forEach(opt => {
+                    opt.classList.remove('active');
+                });
+                option.classList.add('active');
+                editSelectedColor = option.style.backgroundColor;
+            });
+        });
+
+        // Add color picker handler for edit panel
+        const editCustomColorBtn = document.getElementById('editCustomColorBtn');
+        const editColorPicker = document.getElementById('editColorPicker');
+
+        editCustomColorBtn.addEventListener('click', () => {
+            editColorPicker.click();
+        });
+
+        editColorPicker.addEventListener('input', (e) => {
+            const newColor = e.target.value;
+            editSelectedColor = newColor;
+            
+            // Remove active class from all color options
+            editPersonContent.querySelectorAll('.color-option').forEach(opt => {
+                opt.classList.remove('active');
+            });
+        });
+
+        // Add gender selection handlers for edit panel
+        editPersonContent.querySelectorAll('.gender-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                editPersonContent.querySelectorAll('.gender-btn').forEach(b => {
+                    b.classList.remove('active');
+                });
+                btn.classList.add('active');
+            });
+        });
     </script>
 </body>
 </html>
