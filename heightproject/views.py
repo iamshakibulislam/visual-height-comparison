@@ -2,9 +2,11 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
+from blog.models import blogpost
 
 def home(request):
-    return render(request, 'index.html')
+    get_all = blogpost.objects.all()[:10]
+    return render(request, 'index.html',{"posts":get_all})
 
 @csrf_exempt
 def save_comparison(request):

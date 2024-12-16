@@ -1,0 +1,521 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ post.title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <style>
+        @font-face {
+            font-family: 'Font Awesome 5 Free';
+            font-style: normal;
+            font-weight: 900;
+            src: url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900.woff2") format("woff2");
+        }
+
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            color: var(--primary-color) !important;
+        }
+
+        .container-fluid {
+            padding: 2rem;
+        }
+
+        .sidebar {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            padding: 1.5rem;
+        }
+
+        .main-content {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            padding: 1.5rem;
+        }
+
+        .gender-btn {
+            border: 2px solid #e9ecef;
+            background: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .gender-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .color-option {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: transform 0.2s;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.active {
+            border-color: #333;
+        }
+
+        .canvas-container {
+            width: 100%;
+            height: 70vh;
+            position: relative;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            background: #fcfcfc;
+            display: flex;
+            overflow: hidden;
+            padding: 0;
+            margin: 0;
+        }
+
+        .height-scale {
+            position: relative;
+            width: 60px;
+            border-right: 1px solid #e9ecef;
+            background: white;
+            flex-shrink: 0;
+        }
+
+        .right-scale {
+            border-right: none;
+            border-left: 1px solid #e9ecef;
+        }
+
+        .scale-mark {
+            position: absolute;
+            width: 100%;
+            border-top: 1px solid #e9ecef;
+            padding: 2px 5px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .left-scale .scale-mark {
+            text-align: left;
+        }
+
+        .right-scale .scale-mark {
+            text-align: right;
+        }
+
+        canvas {
+            flex-grow: 1;
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        .form-control {
+            border: 2px solid #e9ecef;
+            padding: 0.7rem;
+            border-radius: 8px;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: none;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            border: none;
+            padding: 0.7rem 1.5rem;
+            border-radius: 8px;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary-color);
+        }
+
+        .edit-panel {
+            display: none;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .person-label {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .person-label .collapse {
+            background: white;
+            margin: 10px -10px -10px -10px;
+            padding: 15px;
+            border-radius: 0 0 8px 8px;
+            color: #333;
+        }
+
+        .person-label .form-control {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+
+        .person-label .color-option {
+            width: 25px;
+            height: 25px;
+        }
+
+        .height-label {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .height-controls {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border-radius: 4px;
+            padding: 4px 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: none;
+            white-space: nowrap;
+        }
+
+        .height-controls i {
+            margin: 0 4px;
+            cursor: pointer;
+            color: #6c757d;
+        }
+
+        .height-controls i:hover {
+            color: #333;
+        }
+
+        .height-label:hover .height-controls {
+            display: block;
+        }
+
+        .person-label {
+            margin-bottom: 10px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .person-label .collapse {
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .person-label .fa-times {
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .person-label .fa-times:hover {
+            opacity: 0.8;
+        }
+
+        .edit-panel .color-option {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .edit-panel .color-option.active {
+            border-color: white;
+        }
+
+        .custom-color-btn {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 2px solid #e9ecef;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .custom-color-btn:hover {
+            border-color: var(--primary-color);
+            transform: scale(1.1);
+        }
+
+        .custom-color-btn i {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .color-picker-container {
+            position: relative;
+        }
+
+        .color-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .custom-color-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .custom-color-input {
+            position: absolute;
+            width: 35px;
+            height: 35px;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .custom-color-btn {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 2px solid #e9ecef;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .custom-color-btn:hover {
+            border-color: var(--primary-color);
+            transform: scale(1.1);
+        }
+
+        .custom-color-btn i {
+            color: #666;
+            font-size: 14px;
+            pointer-events: none;
+        }
+
+        .edit-panel .custom-color-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .edit-panel .custom-color-btn {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            border: 2px solid #e9ecef;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .edit-panel .custom-color-btn:hover {
+            border-color: var(--primary-color);
+            transform: scale(1.1);
+        }
+
+        .edit-panel .custom-color-input {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .edit-panel .custom-color-btn i {
+            color: #666;
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        .side-nav {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+
+        .nav-item {
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #666;
+            user-select: none;
+        }
+
+        .nav-item:hover {
+            background: #f8f9fa;
+        }
+
+        .nav-item.active {
+            background: #f8f9fa;
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .content-section {
+            transition: all 0.3s ease;
+        }
+
+        .person-label {
+            border-radius: 8px;
+            color: white;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .person-label .collapse {
+            background: white;
+            color: #333;
+            padding: 1rem;
+        }
+        .edit-person-btn {
+            padding: 0.25rem 0.5rem;
+            color: white !important;
+        }
+        .edit-person-btn:hover {
+            opacity: 0.8;
+        }
+        .person-label .form-control {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+        .person-label .color-option {
+            width: 25px;
+            height: 25px;
+        }
+        .person-label .custom-color-btn {
+            width: 25px;
+            height: 25px;
+        }
+        .person-label .custom-color-input {
+            width: 25px;
+            height: 25px;
+        }
+
+        .suggestion-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .suggestion-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        .suggestion-item:hover {
+            background: #f5f5f5;
+        }
+        .suggestion-item .name {
+            font-weight: 500;
+        }
+        .suggestion-item .details {
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+ <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <img src="{% static 'logo.png' %}" alt="Height Comparison" style="width: 150px;">
+            </a>
+        </div>
+    </nav>
+
+
+    <div class="row mt-4 justify-content-center">
+
+        <div class="mt-4 col-md-6">
+
+            <h1 class=""> {{post.title}} </h1>
+
+        </div>
+
+
+
+    </div>
+
+    <style type="text/css">
+        .containerx{
+
+    word-wrap: break-word !important; /* For older browsers */
+    overflow-wrap: break-word !important;
+    
+
+
+        }
+
+        p{
+            font-size: 20px;
+        }
+    </style>
+
+    <div class="row mt-4 justify-content-center">
+
+        <div  class="containerx col-md-6 mt-4">
+
+            {{post.blog_post_content|safe}}
+
+        </div>
+
+    </div>
+
+</body>
